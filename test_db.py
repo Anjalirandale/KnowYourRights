@@ -1,35 +1,32 @@
-#!/usr/bin/env python3
+from backend import crud, models, schemas, database, security
+from sqlalchemy.orm import Session
 
-import os
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost/legal_quiz")
-
+database.Base.metadata.create_all(bind=database.engine)
+db = database.SessionLocal()
 try:
-    engine = create_engine(DATABASE_URL)
-    with engine.connect() as conn:
-        result = conn.execute(text("SELECT version()"))
-        version = result.fetchone()
-        print(f"✅ Connected to PostgreSQL: {version[0]}")
+    # Test password hashing
+    hashed = security.get_password_hash('test123')
+    print(f'Password hashed successfully: {hashed[:20]}...')
 
-        # Check if database exists
-        result = conn.execute(text("SELECT datname FROM pg_database WHERE datname = 'legal_quiz'"))
-        if result.fetchone():
-            print("✅ Database 'legal_quiz' exists")
-        else:
-            print("❌ Database 'legal_quiz' does not exist")
+    # Test user creation without stats
+    user_data = schemas.UserCreate(name='test3', email='test3@example.com', password='test123')
+    hashed_password = security.get_password_hash(user_data.password)
+    db_user = models.User(name=user_data.name, email=user_data.email, hashed_password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    print(f'User created: {db_user.name}, {db_user.email}, id: {db_user.id}')
 
-        # Check if tables exist
-        result = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"))
-        tables = result.fetchall()
-        if tables:
-            print(f"✅ Found tables: {[t[0] for t in tables]}")
-        else:
-            print("ℹ️  No tables found (run init_db.py to create them)")
+    # Test user stats creation
+    user_stats = models.UserStats(user_id=db_user.id)
+    db.add(user_stats)
+    db.commit()
+    db.refresh(user_stats)
+    print(f'User stats created for user {db_user.id}')
 
+    db.close()
 except Exception as e:
-    print(f"❌ Database connection failed: {e}")
-    print("Make sure PostgreSQL is running and the database credentials are correct.")
+    print(f'Error: {e}')
+    import traceback
+    traceback.print_exc()
+    db.close()

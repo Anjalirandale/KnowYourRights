@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   HomeIcon, 
@@ -7,13 +7,17 @@ import {
   BoltIcon 
 } from '@heroicons/react/24/outline';
 import useGameStore from '../store/gameStore';
+import { getCurrentUser, logoutUser, isAuthenticated } from '../services/authService';
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { level, totalXP } = useGameStore();
+  const loggedIn = isAuthenticated();
+  const currentUser = getCurrentUser();
 
   const navItems = [
-    { path: '/', icon: HomeIcon, label: 'Dashboard' },
+    { path: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
     { path: '/scenario', icon: AcademicCapIcon, label: 'Play' },
     { path: '/progress', icon: ChartBarIcon, label: 'Progress' },
   ];
@@ -75,13 +79,30 @@ const Navigation = () => {
 
           {/* User Stats */}
           <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
-              <BoltIcon className="w-4 h-4 text-amber-500" />
-              <span className="font-bold text-amber-700">{totalXP} XP</span>
-            </div>
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-full font-bold text-sm">
-              Lvl {level}
-            </div>
+            {loggedIn ? (
+              <>
+                <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200">
+                  <BoltIcon className="w-4 h-4 text-amber-500" />
+                  <span className="font-bold text-amber-700">{totalXP} XP</span>
+                </div>
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-3 py-1.5 rounded-full font-bold text-sm">
+                  Lvl {level}
+                </div>
+                <button
+                  onClick={() => {
+                    logoutUser();
+                    navigate('/login');
+                  }}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 text-slate-700">
+                <span>Not signed in</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
