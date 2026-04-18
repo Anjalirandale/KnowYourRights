@@ -97,8 +97,12 @@ class UserProgressResponse(BaseModel):
 
 class Question(BaseModel):
     id: int
+    scenario: str
     question: str
+    options: dict[str, str]
+    correct_answer: str
+    explanation: str
     domain: str
     difficulty: str
-    choices: List[str]
-    answer: str
+    xp_reward: int
+    legal_reference: str

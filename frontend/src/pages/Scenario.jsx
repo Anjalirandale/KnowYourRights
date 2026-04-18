@@ -92,7 +92,7 @@ const Scenario = () => {
     }
   }, [loadNewScenario, scenario]);
 
-  const handleAnswer = (answer) => {
+  const handleAnswer = async (answer) => {
     if (showResult) return;
     
     setSelectedAnswer(answer);
@@ -100,7 +100,7 @@ const Scenario = () => {
     setIsCorrect(correct);
     setShowResult(true);
     
-    const result = answerScenario(correct, scenario.xp_reward);
+    const result = await answerScenario(correct, scenario.xp_reward);
     setEarnedXP(result.earnedXP);
     setStreakBonus(result.streakBonus);
     
@@ -110,7 +110,7 @@ const Scenario = () => {
   };
 
   const handleTimeUp = () => {
-    if (!showResult) {
+    if (!showResult && scenario) {
       setSelectedAnswer(null);
       setIsCorrect(false);
       setShowResult(true);

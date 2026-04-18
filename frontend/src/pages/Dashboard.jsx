@@ -261,16 +261,31 @@ const Dashboard = () => {
             </div>
             
             {/* Play Button */}
-            <Link to="/scenario">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-3 bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <PlayIcon className="w-6 h-6" />
-                Start Challenge
-              </motion.button>
-            </Link>
+            {selectedDomain !== 'All' && selectedDifficulty !== 'All' ? (
+              <Link to="/scenario">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-3 bg-white text-blue-600 px-8 py-4 rounded-2xl font-bold text-xl shadow-lg hover:shadow-xl transition-shadow"
+                >
+                  <PlayIcon className="w-6 h-6" />
+                  Start Challenge
+                </motion.button>
+              </Link>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <motion.button
+                  disabled
+                  className="flex items-center gap-3 bg-white/40 text-white/70 px-8 py-4 rounded-2xl font-bold text-xl shadow cursor-not-allowed"
+                >
+                  <PlayIcon className="w-6 h-6" />
+                  Start Challenge
+                </motion.button>
+                <p className="text-sm text-blue-100 font-medium">
+                  ⚠️ Please select both a domain and difficulty level to start
+                </p>
+              </div>
+            )}
           </div>
         </motion.div>
 
