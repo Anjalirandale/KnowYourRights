@@ -2,7 +2,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   HomeIcon, 
-  AcademicCapIcon, 
   ChartBarIcon,
   BoltIcon 
 } from '@heroicons/react/24/outline';
@@ -18,7 +17,6 @@ const Navigation = () => {
 
   const navItems = [
     { path: '/dashboard', icon: HomeIcon, label: 'Dashboard' },
-    { path: '/scenario', icon: AcademicCapIcon, label: 'Play' },
     { path: '/progress', icon: ChartBarIcon, label: 'Progress' },
   ];
 

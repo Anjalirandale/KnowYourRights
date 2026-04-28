@@ -106,6 +106,9 @@ const Scenario = () => {
     
     if (correct) {
       setShowXPAnimation(true);
+    } else {
+      // Show explanation after a brief delay for wrong answers too
+      setTimeout(() => setShowExplanation(true), 800);
     }
   };
 
@@ -115,6 +118,8 @@ const Scenario = () => {
       setIsCorrect(false);
       setShowResult(true);
       answerScenario(false, scenario.xp_reward);
+      // Show explanation after a brief delay on time-up too
+      setTimeout(() => setShowExplanation(true), 800);
     }
   };
 
