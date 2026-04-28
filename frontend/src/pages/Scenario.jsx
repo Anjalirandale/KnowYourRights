@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
@@ -16,6 +16,261 @@ import StreakFlame from '../components/StreakFlame';
 import XPGainAnimation from '../components/XPGainAnimation';
 import FeedbackBanner from '../components/FeedbackBanner';
 
+// ─── Helper: shuffle an array (Fisher-Yates) ──────────────────────────
+const shuffle = (arr) => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
+
+// ─── MCQ renderer ──────────────────────────────────────────────────────
+const MCQOptions = ({ scenario, selectedAnswer, showResult, isCorrect, onAnswer }) => {
+  const answerLabels = Object.keys(scenario.options);
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {answerLabels.map((label, index) => {
+        const isSelected = selectedAnswer === label;
+        const isCorrectAnswer = label === scenario.correct_answer;
+        const showCorrectness = showResult && isCorrectAnswer;
+        const showWrongness = showResult && isSelected && !isCorrect;
+
+        return (
+          <motion.button
+            key={label}
+            initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 + index * 0.1 }}
+            whileHover={!showResult ? { scale: 1.02 } : {}}
+            whileTap={!showResult ? { scale: 0.98 } : {}}
+            onClick={() => onAnswer(label)}
+            disabled={showResult}
+            className={`relative p-5 rounded-2xl text-left font-medium transition-all ${
+              showCorrectness
+                ? 'bg-green-500 text-white shadow-lg'
+                : showWrongness
+                ? 'bg-red-500 text-white shadow-lg'
+                : isSelected
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600'
+            }`}
+          >
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 font-bold mr-3">
+              {label}
+            </span>
+            {scenario.options[label]}
+
+            {showCorrectness && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-4 top-1/2 -translate-y-1/2">
+                <CheckCircleIcon className="w-6 h-6 text-white" />
+              </motion.div>
+            )}
+            {showWrongness && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute right-4 top-1/2 -translate-y-1/2">
+                <XCircleIcon className="w-6 h-6 text-white" />
+              </motion.div>
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── True / False renderer ─────────────────────────────────────────────
+const TrueFalseOptions = ({ scenario, selectedAnswer, showResult, isCorrect, onAnswer }) => {
+  const options = ['True', 'False'];
+  return (
+    <div className="grid grid-cols-2 gap-6">
+      {options.map((opt, index) => {
+        const isSelected = selectedAnswer === opt;
+        const isCorrectAnswer = opt === scenario.correct_answer;
+        const showCorrectness = showResult && isCorrectAnswer;
+        const showWrongness = showResult && isSelected && !isCorrect;
+
+        return (
+          <motion.button
+            key={opt}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + index * 0.15 }}
+            whileHover={!showResult ? { scale: 1.04 } : {}}
+            whileTap={!showResult ? { scale: 0.96 } : {}}
+            onClick={() => onAnswer(opt)}
+            disabled={showResult}
+            className={`relative p-8 rounded-2xl font-bold text-xl text-center transition-all ${
+              showCorrectness
+                ? 'bg-green-500 text-white shadow-lg ring-4 ring-green-300'
+                : showWrongness
+                ? 'bg-red-500 text-white shadow-lg ring-4 ring-red-300'
+                : isSelected
+                ? 'bg-blue-500 text-white shadow-lg ring-4 ring-blue-300'
+                : opt === 'True'
+                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-2 border-emerald-200'
+                : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-2 border-rose-200'
+            }`}
+          >
+            <div className="text-4xl mb-2">{opt === 'True' ? '✓' : '✗'}</div>
+            {opt}
+
+            {showCorrectness && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 right-3">
+                <CheckCircleIcon className="w-7 h-7 text-white" />
+              </motion.div>
+            )}
+            {showWrongness && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute top-3 right-3">
+                <XCircleIcon className="w-7 h-7 text-white" />
+              </motion.div>
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── Match the Pairs renderer ──────────────────────────────────────────
+const MatchPairsOptions = ({ scenario, showResult, isCorrect, onAnswer, matchState, setMatchState }) => {
+  const pairs = scenario.match_pairs || [];
+
+  // Initialise shuffled right-side options once
+  const shuffledRight = useMemo(() => shuffle(pairs.map(p => p.right)), [pairs]);
+
+  const { selected, userMatches } = matchState;
+
+  const selectLeft = (left) => {
+    if (showResult) return;
+    setMatchState(prev => ({ ...prev, selected: { ...prev.selected, left } }));
+  };
+
+  const selectRight = (right) => {
+    if (showResult) return;
+    const leftPick = selected.left;
+    if (!leftPick) return; // must pick left first
+
+    const newMatches = { ...userMatches, [leftPick]: right };
+    setMatchState({ selected: { left: null, right: null }, userMatches: newMatches });
+
+    // Auto-submit when all pairs matched
+    if (Object.keys(newMatches).length === pairs.length) {
+      const allCorrect = pairs.every(p => newMatches[p.left] === p.right);
+      onAnswer(allCorrect ? '__match_correct__' : '__match_wrong__');
+    }
+  };
+
+  const removeMatch = (left) => {
+    if (showResult) return;
+    const newMatches = { ...userMatches };
+    delete newMatches[left];
+    setMatchState(prev => ({ ...prev, userMatches: newMatches }));
+  };
+
+  const usedRight = new Set(Object.values(userMatches));
+
+  return (
+    <div>
+      {/* Instructions */}
+      <p className="text-sm text-slate-500 mb-4 text-center italic">
+        Select an item on the left, then pick its match on the right. Click a matched pair to undo.
+      </p>
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Left column */}
+        <div className="space-y-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 text-center">Terms</div>
+          {pairs.map((p, i) => {
+            const isMatched = p.left in userMatches;
+            const isActive = selected.left === p.left;
+            let matchCorrect = false;
+            let matchWrong = false;
+            if (showResult && isMatched) {
+              matchCorrect = userMatches[p.left] === p.right;
+              matchWrong = !matchCorrect;
+            }
+            return (
+              <motion.button
+                key={p.left}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 + i * 0.08 }}
+                onClick={() => isMatched && !showResult ? removeMatch(p.left) : selectLeft(p.left)}
+                disabled={showResult}
+                className={`w-full p-4 rounded-xl text-left font-medium transition-all text-sm ${
+                  showResult && matchCorrect
+                    ? 'bg-green-500 text-white'
+                    : showResult && matchWrong
+                    ? 'bg-red-500 text-white'
+                    : isMatched
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : isActive
+                    ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-300'
+                    : 'bg-slate-100 text-slate-700 hover:bg-blue-50'
+                }`}
+              >
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-bold mr-2">
+                  {i + 1}
+                </span>
+                {p.left}
+                {isMatched && !showResult && (
+                  <span className="ml-2 text-xs opacity-70">→ {userMatches[p.left]}</span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2 text-center">Definitions</div>
+          {shuffledRight.map((right, i) => {
+            const isUsed = usedRight.has(right);
+            return (
+              <motion.button
+                key={right}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.15 + i * 0.08 }}
+                onClick={() => selectRight(right)}
+                disabled={showResult || isUsed || !selected.left}
+                className={`w-full p-4 rounded-xl text-left font-medium transition-all text-sm ${
+                  isUsed
+                    ? 'bg-slate-200 text-slate-400 cursor-default'
+                    : selected.left
+                    ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 cursor-pointer'
+                    : 'bg-slate-100 text-slate-600'
+                }`}
+              >
+                {right}
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── Badge for question type ───────────────────────────────────────────
+const QuestionTypeBadge = ({ type }) => {
+  const config = {
+    mcq: { label: 'Multiple Choice', color: 'bg-blue-100 text-blue-700' },
+    true_false: { label: 'True or False', color: 'bg-purple-100 text-purple-700' },
+    match_pairs: { label: 'Match the Pairs', color: 'bg-amber-100 text-amber-700' },
+  };
+  const c = config[type] || config.mcq;
+  return (
+    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${c.color}`}>
+      {c.label}
+    </span>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// Main Scenario component
+// ═══════════════════════════════════════════════════════════════════════
 const Scenario = () => {
   const {
     currentScenario,
@@ -40,6 +295,12 @@ const Scenario = () => {
   const [showExplanation, setShowExplanation] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Match-the-pairs local state
+  const [matchState, setMatchState] = useState({
+    selected: { left: null, right: null },
+    userMatches: {},
+  });
+
   // Load a new scenario
   const loadNewScenario = useCallback(async () => {
     setLoading(true);
@@ -54,15 +315,18 @@ const Scenario = () => {
       if (availableQuestions.length === 0) {
         setScenario(null);
       } else {
-        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-        const selectedQuestion = availableQuestions[randomIndex];
+        // Questions already shuffled by backend, pick first
+        const selectedQuestion = availableQuestions[0];
         
         // Convert API format to component format
-        const scenario = {
+        const sc = {
           id: selectedQuestion.id,
           question: selectedQuestion.question,
+          question_type: selectedQuestion.question_type || 'mcq',
           options: selectedQuestion.options,
           correct_answer: selectedQuestion.correct_answer,
+          match_pairs: selectedQuestion.match_pairs,
+          scenario: selectedQuestion.scenario,
           explanation: selectedQuestion.explanation,
           domain: selectedQuestion.domain,
           difficulty: selectedQuestion.difficulty,
@@ -70,11 +334,12 @@ const Scenario = () => {
           legal_reference: selectedQuestion.legal_reference,
         };
         
-        setScenario(scenario);
-        setCurrentScenario(scenario);
+        setScenario(sc);
+        setCurrentScenario(sc);
         setSelectedAnswer(null);
         setShowResult(false);
         setShowExplanation(false);
+        setMatchState({ selected: { left: null, right: null }, userMatches: {} });
         setTimerKey(prev => prev + 1);
       }
     } catch (error) {
@@ -96,7 +361,14 @@ const Scenario = () => {
     if (showResult) return;
     
     setSelectedAnswer(answer);
-    const correct = answer === scenario.correct_answer;
+
+    let correct = false;
+    if (scenario.question_type === 'match_pairs') {
+      correct = answer === '__match_correct__';
+    } else {
+      correct = answer === scenario.correct_answer;
+    }
+
     setIsCorrect(correct);
     setShowResult(true);
     
@@ -107,7 +379,6 @@ const Scenario = () => {
     if (correct) {
       setShowXPAnimation(true);
     } else {
-      // Show explanation after a brief delay for wrong answers too
       setTimeout(() => setShowExplanation(true), 800);
     }
   };
@@ -118,14 +389,13 @@ const Scenario = () => {
       setIsCorrect(false);
       setShowResult(true);
       answerScenario(false, scenario.xp_reward);
-      // Show explanation after a brief delay on time-up too
       setTimeout(() => setShowExplanation(true), 800);
     }
   };
 
   const handleHint = () => {
     if (useHint()) {
-      // Hint used successfully - could show a visual indicator
+      // Hint used successfully
     }
   };
 
@@ -138,7 +408,10 @@ const Scenario = () => {
     setShowExplanation(true);
   };
 
-  if (!scenario) {
+  // Timer duration varies by question type
+  const timerDuration = scenario?.question_type === 'match_pairs' ? 60 : 45;
+
+  if (!scenario && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
         <motion.div
@@ -179,7 +452,6 @@ const Scenario = () => {
     );
   }
 
-  const answerLabels = ['A', 'B', 'C', 'D'];
   const hintsRemaining = 3 - hintsUsed;
 
   return (
@@ -265,6 +537,7 @@ const Scenario = () => {
               <span className="text-sm opacity-70">Difficulty</span>
               <p className="font-semibold capitalize">{scenario.difficulty}</p>
             </div>
+            <QuestionTypeBadge type={scenario.question_type} />
           </div>
           
           <div className="flex items-center gap-4">
@@ -285,7 +558,7 @@ const Scenario = () => {
           >
             <Timer
               key={timerKey}
-              duration={45}
+              duration={timerDuration}
               onTimeUp={handleTimeUp}
               isActive={!showResult}
             />
@@ -321,66 +594,41 @@ const Scenario = () => {
               </h3>
             </div>
 
-            {/* Answer Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {answerLabels.map((label, index) => {
-                const isSelected = selectedAnswer === label;
-                const isCorrectAnswer = label === scenario.correct_answer;
-                const showCorrectness = showResult && isCorrectAnswer;
-                const showWrongness = showResult && isSelected && !isCorrect;
-                
-                return (
-                  <motion.button
-                    key={label}
-                    initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + index * 0.1 }}
-                    whileHover={!showResult ? { scale: 1.02 } : {}}
-                    whileTap={!showResult ? { scale: 0.98 } : {}}
-                    onClick={() => handleAnswer(label)}
-                    disabled={showResult}
-                    className={`relative p-5 rounded-2xl text-left font-medium transition-all ${
-                      showCorrectness
-                        ? 'bg-green-500 text-white shadow-lg'
-                        : showWrongness
-                        ? 'bg-red-500 text-white shadow-lg'
-                        : isSelected
-                        ? 'bg-blue-500 text-white shadow-lg'
-                        : 'bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600'
-                    }`}
-                  >
-                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 font-bold mr-3">
-                      {label}
-                    </span>
-                    {scenario.options[label]}
-                    
-                    {showCorrectness && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2"
-                      >
-                        <CheckCircleIcon className="w-6 h-6 text-white" />
-                      </motion.div>
-                    )}
-                    
-                    {showWrongness && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2"
-                      >
-                        <XCircleIcon className="w-6 h-6 text-white" />
-                      </motion.div>
-                    )}
-                  </motion.button>
-                );
-              })}
-            </div>
+            {/* Render based on question type */}
+            {scenario.question_type === 'true_false' && (
+              <TrueFalseOptions
+                scenario={scenario}
+                selectedAnswer={selectedAnswer}
+                showResult={showResult}
+                isCorrect={isCorrect}
+                onAnswer={handleAnswer}
+              />
+            )}
+
+            {scenario.question_type === 'match_pairs' && (
+              <MatchPairsOptions
+                scenario={scenario}
+                showResult={showResult}
+                isCorrect={isCorrect}
+                onAnswer={handleAnswer}
+                matchState={matchState}
+                setMatchState={setMatchState}
+              />
+            )}
+
+            {(scenario.question_type === 'mcq' || !scenario.question_type) && (
+              <MCQOptions
+                scenario={scenario}
+                selectedAnswer={selectedAnswer}
+                showResult={showResult}
+                isCorrect={isCorrect}
+                onAnswer={handleAnswer}
+              />
+            )}
           </div>
 
-          {/* Hint Button */}
-          {!showResult && (
+          {/* Hint Button — hide for match_pairs */}
+          {!showResult && scenario.question_type !== 'match_pairs' && (
             <div className="px-8 pb-6">
               <motion.button
                 whileHover={{ scale: 1.02 }}

@@ -1,3 +1,5 @@
+import random
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -278,6 +280,7 @@ QUESTION_BANK = [
         "difficulty": "hard",
         "scenario": "A person creates a fake social media profile impersonating a celebrity and posts defamatory content, causing reputational damage.",
         "question": "What offenses have been committed?",
+        "question_type": "mcq",
         "options": {
             "A": "Only civil defamation applies",
             "B": "Identity theft, impersonation, and defamation - all criminal offenses",
@@ -289,7 +292,159 @@ QUESTION_BANK = [
         "legal_reference": "IT Act 2000 - Section 66C, 66D, IPC Section 499, 500",
         "xp_reward": 50
     },
+    # ── True / False questions ──────────────────────────────────────────
+    {
+        "id": 16,
+        "domain": "Consumer Rights",
+        "difficulty": "easy",
+        "scenario": "A shop displays a sign saying 'No refunds or exchanges under any circumstances'.",
+        "question": "A shop can legally refuse all refunds even for defective products.",
+        "question_type": "true_false",
+        "correct_answer": "False",
+        "explanation": "Under the Consumer Protection Act 2019, consumers have the right to seek redressal for defective goods regardless of any shop policy. A 'no refund' sign does not override statutory consumer rights.",
+        "legal_reference": "Consumer Protection Act 2019 - Section 2(9)",
+        "xp_reward": 10
+    },
+    {
+        "id": 17,
+        "domain": "Labor Law",
+        "difficulty": "easy",
+        "scenario": "An employer tells a female employee she is not entitled to maternity leave because the company has fewer than 50 employees.",
+        "question": "Maternity leave benefits apply only to companies with 50 or more employees.",
+        "question_type": "true_false",
+        "correct_answer": "False",
+        "explanation": "The Maternity Benefit Act 1961 applies to every establishment employing 10 or more persons. The threshold is 10, not 50.",
+        "legal_reference": "Maternity Benefit Act 1961 - Section 2",
+        "xp_reward": 10
+    },
+    {
+        "id": 18,
+        "domain": "Constitutional Rights",
+        "difficulty": "medium",
+        "scenario": "A citizen is stopped by police for a routine check and asked to show identification documents.",
+        "question": "Indian citizens are legally required to carry an identity card at all times.",
+        "question_type": "true_false",
+        "correct_answer": "False",
+        "explanation": "There is no law in India that mandates citizens to carry an identity card at all times. While certain restricted areas may require identification, general movement does not.",
+        "legal_reference": "Constitution of India - Article 19(1)(d)",
+        "xp_reward": 25
+    },
+    {
+        "id": 19,
+        "domain": "Criminal Law",
+        "difficulty": "medium",
+        "scenario": "A person is arrested and the police officer tells them they can only speak to a lawyer after 48 hours.",
+        "question": "An arrested person has the right to consult a lawyer immediately upon arrest.",
+        "question_type": "true_false",
+        "correct_answer": "True",
+        "explanation": "Article 22(1) of the Constitution guarantees every arrested person the right to consult and be defended by a legal practitioner of their choice without any delay.",
+        "legal_reference": "Constitution of India - Article 22(1)",
+        "xp_reward": 25
+    },
+    {
+        "id": 20,
+        "domain": "Cyber Law",
+        "difficulty": "hard",
+        "scenario": "A company collects biometric data of visitors without informing them, claiming it is for 'security purposes'.",
+        "question": "Companies can collect biometric data without explicit consent if it is for security purposes.",
+        "question_type": "true_false",
+        "correct_answer": "False",
+        "explanation": "Collection of biometric data constitutes sensitive personal data under the IT Act's SPDI Rules. Explicit, informed consent is mandatory regardless of the stated purpose.",
+        "legal_reference": "IT Act 2000 - SPDI Rules 2011, Rule 5",
+        "xp_reward": 50
+    },
+    # ── Match the Pairs questions ───────────────────────────────────────
+    {
+        "id": 21,
+        "domain": "Constitutional Rights",
+        "difficulty": "medium",
+        "scenario": "Understanding Fundamental Rights guaranteed by the Indian Constitution.",
+        "question": "Match each Fundamental Right with its correct Article number.",
+        "question_type": "match_pairs",
+        "match_pairs": [
+            {"left": "Right to Equality", "right": "Article 14"},
+            {"left": "Right to Freedom", "right": "Article 19"},
+            {"left": "Right against Exploitation", "right": "Article 23"},
+            {"left": "Right to Education", "right": "Article 21A"}
+        ],
+        "explanation": "The Constitution of India enshrines Fundamental Rights in Part III. Each right is linked to specific articles that define the scope and limitations of that right.",
+        "legal_reference": "Constitution of India - Part III",
+        "xp_reward": 25
+    },
+    {
+        "id": 22,
+        "domain": "Consumer Rights",
+        "difficulty": "medium",
+        "scenario": "A consumer forum receives complaints involving different types of unfair practices.",
+        "question": "Match each consumer right with its correct description.",
+        "question_type": "match_pairs",
+        "match_pairs": [
+            {"left": "Right to Safety", "right": "Protection against hazardous goods"},
+            {"left": "Right to Information", "right": "Full disclosure of product details"},
+            {"left": "Right to Choose", "right": "Access to variety of goods at fair prices"},
+            {"left": "Right to Redressal", "right": "Seek remedy against unfair practices"}
+        ],
+        "explanation": "The Consumer Protection Act 2019 enshrines six fundamental consumer rights that empower individuals to make informed choices and seek justice.",
+        "legal_reference": "Consumer Protection Act 2019 - Section 2(9)",
+        "xp_reward": 25
+    },
+    {
+        "id": 23,
+        "domain": "Criminal Law",
+        "difficulty": "hard",
+        "scenario": "A law student is studying different types of offenses and their legal classifications.",
+        "question": "Match each type of offense with its correct legal characteristic.",
+        "question_type": "match_pairs",
+        "match_pairs": [
+            {"left": "Cognizable Offense", "right": "Police can arrest without warrant"},
+            {"left": "Non-cognizable Offense", "right": "Police need magistrate's order to investigate"},
+            {"left": "Bailable Offense", "right": "Accused has right to bail as a matter of right"},
+            {"left": "Compoundable Offense", "right": "Can be settled between parties"}
+        ],
+        "explanation": "The Code of Criminal Procedure classifies offenses into different categories that determine the powers of police and rights of the accused.",
+        "legal_reference": "Code of Criminal Procedure 1973 - First Schedule",
+        "xp_reward": 50
+    },
+    {
+        "id": 24,
+        "domain": "Labor Law",
+        "difficulty": "hard",
+        "scenario": "An HR manager needs to ensure compliance with various labor welfare provisions.",
+        "question": "Match each labor law with its primary purpose.",
+        "question_type": "match_pairs",
+        "match_pairs": [
+            {"left": "Factories Act 1948", "right": "Health, safety and welfare of factory workers"},
+            {"left": "Payment of Wages Act 1936", "right": "Timely payment of wages without deductions"},
+            {"left": "EPF Act 1952", "right": "Retirement savings and social security"},
+            {"left": "ESI Act 1948", "right": "Medical and cash benefits for employees"}
+        ],
+        "explanation": "India has a comprehensive framework of labor laws, each addressing specific aspects of worker welfare, from wages and safety to social security and healthcare.",
+        "legal_reference": "Various Labor Welfare Legislations",
+        "xp_reward": 50
+    },
+    {
+        "id": 25,
+        "domain": "Cyber Law",
+        "difficulty": "medium",
+        "scenario": "A cybersecurity analyst is classifying different types of cyber crimes under Indian law.",
+        "question": "Match each cyber crime with its corresponding section under the IT Act.",
+        "question_type": "match_pairs",
+        "match_pairs": [
+            {"left": "Hacking / Unauthorized Access", "right": "Section 66"},
+            {"left": "Identity Theft", "right": "Section 66C"},
+            {"left": "Cyber Stalking", "right": "Section 354D IPC"},
+            {"left": "Publishing Obscene Content", "right": "Section 67"}
+        ],
+        "explanation": "The Information Technology Act 2000 and its amendments define specific sections for different types of cyber offenses, each carrying distinct penalties.",
+        "legal_reference": "IT Act 2000 - Sections 66, 66C, 67",
+        "xp_reward": 25
+    },
 ]
+
+# Add question_type to legacy MCQ questions that don't have it
+for q in QUESTION_BANK:
+    if "question_type" not in q:
+        q["question_type"] = "mcq"
 
 
 @app.post("/auth/signup")
@@ -353,9 +508,10 @@ def add_xp_history(entry: schemas.XPEntryCreate, current_user: models.User = Dep
 
 @app.get("/questions", response_model=List[schemas.Question])
 def list_questions(domain: str = "", difficulty: str = ""):
-    filtered = QUESTION_BANK
+    filtered = list(QUESTION_BANK)
     if domain:
         filtered = [q for q in filtered if q["domain"].lower() == domain.lower()]
     if difficulty:
         filtered = [q for q in filtered if q["difficulty"].lower() == difficulty.lower()]
+    random.shuffle(filtered)
     return filtered

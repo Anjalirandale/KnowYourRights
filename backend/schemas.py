@@ -95,12 +95,19 @@ class UserProgressResponse(BaseModel):
     xp_history: List[XPEntryRead]
 
 
+class MatchPair(BaseModel):
+    left: str
+    right: str
+
+
 class Question(BaseModel):
     id: int
     scenario: str
     question: str
-    options: dict[str, str]
-    correct_answer: str
+    question_type: str = "mcq"  # "mcq", "true_false", "match_pairs"
+    options: Optional[dict[str, str]] = None
+    correct_answer: Optional[str] = None
+    match_pairs: Optional[List[MatchPair]] = None
     explanation: str
     domain: str
     difficulty: str
